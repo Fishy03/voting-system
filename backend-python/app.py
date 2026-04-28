@@ -129,6 +129,22 @@ def auth_optional():
         return None
 
 
+def require_user(conn: sqlite3.Connection, payload: dict):
+    """
+    Ensure the authenticated user referenced by the JWT exists in the DB.
+    Returns (user_row, error_response_or_none)
+    """
+    try:
+        user_id = int(payload.get("sub"))
+    except Exception:
+        return None, (jsonify({"error": "Invalid or expired token."}), 401)
+
+    user = conn.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        return None, (jsonify({"error": "Session is no longer valid. Please login again."}), 401)
+    return user, None
+
+
 app = Flask(__name__, static_folder=None)
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
@@ -290,9 +306,12 @@ def my_polls():
     if err:
         return err
 
-    user_id = int(payload["sub"])
     conn = get_db()
     try:
+        user, user_err = require_user(conn, payload)
+        if user_err:
+            return user_err
+        user_id = int(user["id"])
         rows = conn.execute(
             """
             SELECT p.id, p.title,
@@ -314,7 +333,6 @@ def create_poll():
     if err:
         return err
 
-    user_id = int(payload["sub"])
     body = request.get_json(silent=True) or {}
     title = str(body.get("title", "")).strip()
     candidates = body.get("candidates", [])
@@ -337,6 +355,10 @@ def create_poll():
 
     conn = get_db()
     try:
+        user, user_err = require_user(conn, payload)
+        if user_err:
+            return user_err
+        user_id = int(user["id"])
         conn.execute(
             "INSERT INTO polls (id, title, created_by_user_id, created_at) VALUES (?, ?, ?, ?)",
             (poll_id, title, user_id, now_iso()),
@@ -368,6 +390,9 @@ def create_poll():
                 }
             }
         )
+    except sqlite3.IntegrityError:
+        # Most commonly: token user doesn't exist anymore, or DB got reset.
+        return jsonify({"error": "Session is no longer valid. Please login again."}), 401
     finally:
         conn.close()
 
@@ -425,7 +450,6 @@ def vote(poll_id: str):
     if err:
         return err
 
-    user_id = int(payload["sub"])
     body = request.get_json(silent=True) or {}
     try:
         candidate_id = int(body.get("candidateId"))
@@ -434,6 +458,10 @@ def vote(poll_id: str):
 
     conn = get_db()
     try:
+        user, user_err = require_user(conn, payload)
+        if user_err:
+            return user_err
+        user_id = int(user["id"])
         poll = conn.execute("SELECT id FROM polls WHERE id = ?", (poll_id,)).fetchone()
         if not poll:
             return jsonify({"error": "Poll not found."}), 404
