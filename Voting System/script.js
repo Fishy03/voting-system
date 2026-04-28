@@ -126,9 +126,16 @@ class UIController {
     this.showLoginBtn.addEventListener("click", () => this.toggleAuth("login"));
     this.showRegisterBtn.addEventListener("click", () => this.toggleAuth("register"));
 
-    this.sendOtpBtn.addEventListener("click", () => this.sendOtp());
-    this.verifyIdentityBtn.addEventListener("click", () => this.handleIdentityVerification());
-    this.cancelVerificationBtn.addEventListener("click", () => this.closeIdentityModal());
+    // Identity/OTP UI is optional; don't crash if the modal isn't present in HTML.
+    if (this.sendOtpBtn) {
+      this.sendOtpBtn.addEventListener("click", () => this.sendOtp());
+    }
+    if (this.verifyIdentityBtn) {
+      this.verifyIdentityBtn.addEventListener("click", () => this.handleIdentityVerification());
+    }
+    if (this.cancelVerificationBtn) {
+      this.cancelVerificationBtn.addEventListener("click", () => this.closeIdentityModal());
+    }
 
     this.registerForm.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -316,17 +323,24 @@ class UIController {
   }
 
   showIdentityModal(onVerified) {
+    // If identity modal isn't present, continue without blocking.
+    if (!this.identityModal) {
+      onVerified();
+      return;
+    }
     this.generateCaptcha();
     this.identityModal.classList.remove("hidden");
     this.onVerifiedCallback = onVerified;
   }
 
   closeIdentityModal() {
+    if (!this.identityModal) return;
     this.identityModal.classList.add("hidden");
     this.storedOtp = null; // Reset OTP
   }
 
   generateCaptcha() {
+    if (!this.captchaQuestion) return;
     const num1 = Math.floor(Math.random() * 10) + 1;
     const num2 = Math.floor(Math.random() * 10) + 1;
     this.captchaAnswer = num1 + num2;
