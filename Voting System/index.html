@@ -10,25 +10,87 @@
         theme: {
           extend: {
             colors: {
-              primary: '#3b82f6',
-              secondary: '#10b981',
-              accent: '#f59e0b',
-              danger: '#ef4444',
+              primary: {
+                50: '#eff6ff',
+                100: '#dbeafe',
+                200: '#bfdbfe',
+                300: '#93c5fd',
+                400: '#60a5fa',
+                500: '#3b82f6',
+                600: '#2563eb',
+                700: '#1d4ed8',
+                800: '#1e40af',
+                900: '#1e3a8a',
+              },
+              secondary: {
+                50: '#f0fdf4',
+                100: '#dcfce7',
+                200: '#bbf7d0',
+                300: '#86efac',
+                400: '#4ade80',
+                500: '#22c55e',
+                600: '#16a34a',
+                700: '#15803d',
+                800: '#166534',
+                900: '#14532d',
+              },
+              accent: {
+                50: '#fffbeb',
+                100: '#fef3c7',
+                200: '#fde68a',
+                300: '#fcd34d',
+                400: '#fbbf24',
+                500: '#f59e0b',
+                600: '#d97706',
+                700: '#b45309',
+                800: '#92400e',
+                900: '#78350f',
+              },
+              danger: {
+                50: '#fef2f2',
+                100: '#fee2e2',
+                200: '#fecaca',
+                300: '#fca5a5',
+                400: '#f87171',
+                500: '#ef4444',
+                600: '#dc2626',
+                700: '#b91c1c',
+                800: '#991b1b',
+                900: '#7f1d1d',
+              },
               muted: '#6b7280',
+              background: '#f8fafc',
+              surface: '#ffffff',
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
             },
             animation: {
-              'fade-in': 'fadeIn 0.5s ease-in-out',
-              'slide-up': 'slideUp 0.3s ease-out',
+              'fade-in': 'fadeIn 0.6s ease-out',
+              'slide-up': 'slideUp 0.4s ease-out',
+              'bounce-in': 'bounceIn 0.5s ease-out',
+              'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             },
             keyframes: {
               fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
               },
               slideUp: {
-                '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '0%': { transform: 'translateY(30px)', opacity: '0' },
                 '100%': { transform: 'translateY(0)', opacity: '1' },
               },
+              bounceIn: {
+                '0%': { transform: 'scale(0.3)', opacity: '0' },
+                '50%': { transform: 'scale(1.05)' },
+                '70%': { transform: 'scale(0.9)' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
+              },
+            },
+            boxShadow: {
+              'soft': '0 2px 15px rgba(0, 0, 0, 0.08)',
+              'medium': '0 4px 25px rgba(0, 0, 0, 0.12)',
+              'large': '0 8px 40px rgba(0, 0, 0, 0.16)',
             },
           },
         },
@@ -40,147 +102,154 @@
       .animate-slide-up { animation: slideUp 0.3s ease-out; }
     </style>
   </head>
-  <body class="bg-gradient-to-br from-blue-50 via-white to-green-50 min-h-screen font-sans text-gray-900">
-    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
-      <div class="container mx-auto px-4 py-6">
-        <h1 class="text-2xl md:text-3xl font-bold mb-2">Secure Online Voting System</h1>
-        <p class="text-blue-100">Create polls, share links, and collect verified votes</p>
+  <body class="bg-gradient-to-br from-background via-primary-50 to-secondary-50 min-h-screen font-sans text-gray-900 antialiased">
+    <header class="bg-gradient-to-r from-primary-600 via-primary-700 to-primary-800 text-white shadow-large animate-fade-in">
+      <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-2 tracking-tight">Secure Online Voting System</h1>
+        <p class="text-primary-100 text-lg md:text-xl opacity-90">Create polls, share links, and collect verified votes with confidence</p>
       </div>
     </header>
 
-    <main class="container mx-auto px-4 py-8 max-w-6xl">
-      <div id="appMessage" class="message hidden animate-slide-up" aria-live="polite"></div>
+    <main class="container mx-auto px-4 py-12 max-w-7xl">
+      <div id="appMessage" class="message hidden animate-bounce-in rounded-xl p-4 mb-6 text-center font-medium shadow-soft" aria-live="polite"></div>
 
       <!-- Identity Verification Modal -->
-      <div id="identityModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 animate-slide-up">
-          <h2 class="text-xl font-bold mb-4 text-center">Identity Verification</h2>
-          <p class="text-gray-600 mb-4 text-center">To ensure secure voting, please verify your identity.</p>
-          <form id="identityForm" class="space-y-4">
+      <div id="identityModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm hidden flex items-center justify-center z-50 animate-fade-in">
+        <div class="bg-surface rounded-2xl shadow-large p-8 max-w-lg w-full mx-4 animate-bounce-in">
+          <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Identity Verification</h2>
+          <p class="text-gray-600 mb-6 text-center text-lg">To ensure secure voting, please verify your email address.</p>
+          <form id="identityForm" class="space-y-6">
             <div>
-              <label for="idType" class="block text-sm font-medium text-gray-700 mb-1">ID Type</label>
-              <select id="idType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="aadhaar">Aadhaar Card</option>
-                <option value="pan">PAN Card</option>
-              </select>
+              <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+              <input id="email" type="email" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-200 focus:border-primary-500 transition-all duration-200 text-gray-700" placeholder="Enter your email address">
             </div>
             <div>
-              <label for="idNumber" class="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
-              <input id="idNumber" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your ID number">
+              <label for="otp" class="block text-sm font-semibold text-gray-700 mb-2">OTP (One-Time Password)</label>
+              <input id="otp" type="text" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-200 focus:border-primary-500 transition-all duration-200 text-gray-700" placeholder="Enter OTP sent to your email">
             </div>
             <div>
-              <label for="otp" class="block text-sm font-medium text-gray-700 mb-1">OTP (One-Time Password)</label>
-              <input id="otp" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter OTP sent to your registered mobile">
+              <label for="captcha" class="block text-sm font-semibold text-gray-700 mb-2">CAPTCHA: What is <span id="captchaQuestion" class="font-mono bg-gray-100 px-2 py-1 rounded">2 + 3</span>?</label>
+              <input id="captcha" type="text" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-200 focus:border-primary-500 transition-all duration-200 text-gray-700" placeholder="Enter the answer">
             </div>
-            <div class="flex space-x-3">
-              <button type="button" id="verifyIdentityBtn" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">Verify</button>
-              <button type="button" id="cancelVerificationBtn" class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 transition duration-200">Cancel</button>
+            <div class="flex space-x-4">
+              <button type="button" id="sendOtpBtn" class="flex-1 bg-secondary-600 text-white py-3 px-6 rounded-xl hover:bg-secondary-700 focus:outline-none focus:ring-4 focus:ring-secondary-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5" aria-label="Send OTP">Send OTP</button>
+              <button type="button" id="verifyIdentityBtn" class="flex-1 bg-primary-600 text-white py-3 px-6 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5" aria-label="Verify identity">Verify</button>
+              <button type="button" id="cancelVerificationBtn" class="flex-1 bg-gray-200 text-gray-700 py-3 px-6 rounded-xl hover:bg-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5" aria-label="Cancel verification">Cancel</button>
             </div>
           </form>
         </div>
       </div>
 
-      <section id="authSection" class="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl shadow-lg p-6 animate-fade-in">
-        <div class="flex mb-6 bg-gray-100 rounded-lg p-1">
-          <button id="showLoginBtn" class="tab flex-1 py-2 px-4 rounded-md text-sm font-medium transition duration-200">Login</button>
-          <button id="showRegisterBtn" class="tab flex-1 py-2 px-4 rounded-md text-sm font-medium transition duration-200">Register</button>
+      <section id="authSection" class="bg-surface bg-opacity-95 backdrop-blur-md rounded-2xl shadow-large p-8 animate-fade-in">
+        <div class="flex mb-8 bg-gray-100 rounded-xl p-1 shadow-inner">
+          <button id="showLoginBtn" class="tab flex-1 py-3 px-6 rounded-lg text-sm font-semibold bg-primary-600 text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-primary-300" aria-label="Switch to login">Login</button>
+          <button id="showRegisterBtn" class="tab flex-1 py-3 px-6 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-secondary-300" aria-label="Switch to register">Register</button>
         </div>
 
-        <form id="loginForm" class="space-y-4">
-          <h2 class="text-xl font-bold text-center mb-4">Login</h2>
+        <form id="loginForm" class="space-y-6">
+          <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Welcome Back</h2>
           <div>
-            <label for="loginUsername" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-            <input id="loginUsername" type="text" required minlength="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label for="loginUsername" class="block text-sm font-semibold text-gray-700 mb-2">Username</label>
+            <input id="loginUsername" type="text" required minlength="3" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-200 focus:border-primary-500 transition-all duration-200 text-gray-700" aria-describedby="loginUsernameHelp">
+            <p id="loginUsernameHelp" class="text-xs text-gray-500 mt-1">Enter your registered username</p>
           </div>
           <div>
-            <label for="loginPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input id="loginPassword" type="password" required minlength="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label for="loginPassword" class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+            <input id="loginPassword" type="password" required minlength="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-200 focus:border-primary-500 transition-all duration-200 text-gray-700" aria-describedby="loginPasswordHelp">
+            <p id="loginPasswordHelp" class="text-xs text-gray-500 mt-1">Minimum 4 characters</p>
           </div>
-          <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200 font-medium">Login</button>
+          <button type="submit" class="w-full bg-primary-600 text-white py-3 px-6 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5" aria-label="Login to account">Login</button>
         </form>
 
-        <form id="registerForm" class="space-y-4 hidden">
-          <h2 class="text-xl font-bold text-center mb-4">Create Account</h2>
+        <form id="registerForm" class="space-y-6 hidden">
+          <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Create Your Account</h2>
           <div>
-            <label for="registerUsername" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-            <input id="registerUsername" type="text" required minlength="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label for="registerUsername" class="block text-sm font-semibold text-gray-700 mb-2">Username</label>
+            <input id="registerUsername" type="text" required minlength="3" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-secondary-200 focus:border-secondary-500 transition-all duration-200 text-gray-700" aria-describedby="registerUsernameHelp">
+            <p id="registerUsernameHelp" class="text-xs text-gray-500 mt-1">Choose a unique username (min 3 characters)</p>
           </div>
           <div>
-            <label for="registerPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input id="registerPassword" type="password" required minlength="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label for="registerPassword" class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+            <input id="registerPassword" type="password" required minlength="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-secondary-200 focus:border-secondary-500 transition-all duration-200 text-gray-700" aria-describedby="registerPasswordHelp">
+            <p id="registerPasswordHelp" class="text-xs text-gray-500 mt-1">Minimum 4 characters for security</p>
           </div>
           <div>
-            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-            <input id="confirmPassword" type="password" required minlength="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label for="confirmPassword" class="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
+            <input id="confirmPassword" type="password" required minlength="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-secondary-200 focus:border-secondary-500 transition-all duration-200 text-gray-700" aria-describedby="confirmPasswordHelp">
+            <p id="confirmPasswordHelp" class="text-xs text-gray-500 mt-1">Re-enter your password</p>
           </div>
-          <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-200 font-medium">Register</button>
+          <button type="submit" class="w-full bg-secondary-600 text-white py-3 px-6 rounded-xl hover:bg-secondary-700 focus:outline-none focus:ring-4 focus:ring-secondary-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5" aria-label="Register new account">Register</button>
         </form>
       </section>
 
-      <section id="dashboardSection" class="hidden space-y-6">
-        <div class="bg-white rounded-xl shadow-lg p-6 flex justify-between items-center">
+      <section id="dashboardSection" class="hidden space-y-8">
+        <div class="bg-surface rounded-2xl shadow-large p-8 flex justify-between items-center animate-fade-in">
           <div>
-            Logged in as <strong id="currentUserLabel" class="text-blue-600">-</strong>
+            <h2 class="text-xl font-bold text-gray-800 mb-1">Welcome back, <strong id="currentUserLabel" class="text-primary-600">-</strong></h2>
+            <p class="text-gray-600">Manage your polls and voting activities</p>
           </div>
-          <div class="flex space-x-2">
-            <button id="logoutBtn" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition duration-200">Logout</button>
+          <div class="flex space-x-3">
+            <button id="logoutBtn" class="bg-danger-500 text-white py-3 px-6 rounded-xl hover:bg-danger-600 focus:outline-none focus:ring-4 focus:ring-danger-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5" aria-label="Logout">Logout</button>
           </div>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-6">
-          <section class="bg-white rounded-xl shadow-lg p-6">
-            <h2 class="text-xl font-bold mb-4 text-gray-800">Create a Poll (Host)</h2>
-            <form id="createPollForm" class="space-y-4">
+        <div class="grid lg:grid-cols-2 gap-8">
+          <section class="bg-surface rounded-2xl shadow-large p-8 animate-slide-up">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Create a Poll (Host)</h2>
+            <form id="createPollForm" class="space-y-6">
               <div>
-                <label for="pollTitle" class="block text-sm font-medium text-gray-700 mb-1">Poll Title</label>
-                <input id="pollTitle" type="text" required minlength="4" placeholder="Example: School Captain Election" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label for="pollTitle" class="block text-sm font-semibold text-gray-700 mb-2">Poll Title</label>
+                <input id="pollTitle" type="text" required minlength="4" placeholder="Example: School Captain Election" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-200 focus:border-primary-500 transition-all duration-200 text-gray-700" aria-describedby="pollTitleHelp">
+                <p id="pollTitleHelp" class="text-xs text-gray-500 mt-1">Give your poll a clear, descriptive title</p>
               </div>
               <div>
-                <label for="pollCandidates" class="block text-sm font-medium text-gray-700 mb-1">Candidates (one per line)</label>
-                <textarea id="pollCandidates" rows="5" required placeholder="Alice&#10;Brian&#10;Carla" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                <label for="pollCandidates" class="block text-sm font-semibold text-gray-700 mb-2">Candidates (one per line)</label>
+                <textarea id="pollCandidates" rows="6" required placeholder="Alice&#10;Brian&#10;Carla" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-200 focus:border-primary-500 transition-all duration-200 text-gray-700 resize-none" aria-describedby="pollCandidatesHelp"></textarea>
+                <p id="pollCandidatesHelp" class="text-xs text-gray-500 mt-1">Enter each candidate on a new line (minimum 2)</p>
               </div>
-              <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200 font-medium">Create Poll</button>
+              <button type="submit" class="w-full bg-primary-600 text-white py-3 px-6 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5" aria-label="Create new poll">Create Poll</button>
             </form>
           </section>
 
-          <section class="bg-white rounded-xl shadow-lg p-6">
-            <h2 class="text-xl font-bold mb-4 text-gray-800">Open Poll by Link</h2>
-            <form id="openPollForm" class="flex space-x-2 mb-4">
-              <input id="pollLinkInput" type="text" placeholder="Paste poll URL or ID" class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">Open</button>
+          <section class="bg-surface rounded-2xl shadow-large p-8 animate-slide-up">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Open Poll by Link</h2>
+            <form id="openPollForm" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-6">
+              <input id="pollLinkInput" type="text" placeholder="Paste poll URL or ID" class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-200 focus:border-primary-500 transition-all duration-200 text-gray-700" aria-describedby="pollLinkHelp">
+              <button type="submit" class="bg-primary-600 text-white py-3 px-6 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5 sm:w-auto w-full" aria-label="Open poll">Open</button>
             </form>
-            <h3 class="text-lg font-semibold mb-3 text-gray-800">Your Hosted Polls</h3>
-            <div id="myPolls" class="space-y-3"></div>
+            <p id="pollLinkHelp" class="text-xs text-gray-500 mb-4">Enter the full URL or just the poll ID</p>
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Your Hosted Polls</h3>
+            <div id="myPolls" class="space-y-4"></div>
           </section>
         </div>
       </section>
 
-      <section id="pollSection" class="hidden space-y-6">
-        <div class="bg-white rounded-xl shadow-lg p-6">
-          <div class="flex justify-between items-center mb-4">
+      <section id="pollSection" class="hidden space-y-8">
+        <div class="bg-surface rounded-2xl shadow-large p-8 animate-fade-in">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
-              <h2 id="pollTitleLabel" class="text-xl font-bold text-gray-800">Poll</h2>
-              <p class="text-gray-600 text-sm">Poll ID: <code id="pollIdLabel" class="bg-gray-100 px-2 py-1 rounded">-</code></p>
+              <h2 id="pollTitleLabel" class="text-2xl font-bold text-gray-800 mb-1">Poll</h2>
+              <p class="text-gray-600 text-sm">Poll ID: <code id="pollIdLabel" class="bg-gray-100 px-3 py-1 rounded-lg font-mono text-gray-800">-</code></p>
             </div>
-            <div class="flex space-x-2">
-              <button id="copyPollLinkBtn" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">Copy Share Link</button>
-              <button id="backDashboardBtn" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition duration-200">Back</button>
+            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+              <button id="copyPollLinkBtn" class="bg-primary-600 text-white py-3 px-6 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5" aria-label="Copy poll share link">Copy Share Link</button>
+              <button id="backDashboardBtn" class="bg-gray-500 text-white py-3 px-6 rounded-xl hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5" aria-label="Back to dashboard">Back</button>
             </div>
           </div>
-          <div id="pollShareLink" class="bg-blue-50 border border-blue-200 rounded-md p-3 text-blue-800 font-mono text-sm break-all"></div>
+          <div id="pollShareLink" class="bg-primary-50 border-2 border-primary-200 rounded-xl p-4 text-primary-800 font-mono text-sm break-all shadow-soft"></div>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-6">
-          <section class="bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-bold mb-4 text-gray-800">Candidates</h3>
-            <div id="candidateList" class="space-y-3"></div>
+        <div class="grid lg:grid-cols-2 gap-8">
+          <section class="bg-surface rounded-2xl shadow-large p-8 animate-slide-up">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">Candidates</h3>
+            <div id="candidateList" class="space-y-4"></div>
           </section>
-          <section class="bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-bold mb-4 text-gray-800">Live Results</h3>
-            <div class="h-64 mb-4">
+          <section class="bg-surface rounded-2xl shadow-large p-8 animate-slide-up">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">Live Results</h3>
+            <div class="h-80 mb-6 shadow-soft rounded-xl overflow-hidden">
               <canvas id="resultsChart"></canvas>
             </div>
-            <div id="resultCounts" class="space-y-2"></div>
+            <div id="resultCounts" class="space-y-3"></div>
           </section>
         </div>
       </section>
