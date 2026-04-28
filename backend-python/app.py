@@ -1,12 +1,15 @@
 import os
+import re
+import secrets
 import sqlite3
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import jwt
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, make_response, request, send_from_directory
 from flask_cors import CORS
+from flask_mail import Mail, Message
 from passlib.hash import pbkdf2_sha256
 
 
@@ -24,6 +27,10 @@ def now_iso() -> str:
 
 def make_poll_id() -> str:
     return f"p_{int(time.time() * 1000):x}{os.urandom(2).hex()}"
+
+
+def is_valid_email(email: str) -> bool:
+    return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email))
 
 
 def get_db() -> sqlite3.Connection:
@@ -69,6 +76,13 @@ def init_db() -> None:
               FOREIGN KEY(poll_id) REFERENCES polls(id),
               FOREIGN KEY(user_id) REFERENCES users(id),
               FOREIGN KEY(candidate_id) REFERENCES candidates(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS otps (
+              email TEXT PRIMARY KEY,
+              otp TEXT NOT NULL,
+              expires_at TEXT NOT NULL,
+              created_at TEXT NOT NULL
             );
             """
         )
@@ -116,12 +130,105 @@ def auth_optional():
 
 
 app = Flask(__name__, static_folder=None)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+
+app.config.update(
+    MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
+    MAIL_PORT=int(os.getenv("MAIL_PORT", "587")),
+    MAIL_USE_TLS=os.getenv("MAIL_USE_TLS", "true").lower() in ("1", "true", "yes"),
+    MAIL_USE_SSL=os.getenv("MAIL_USE_SSL", "false").lower() in ("1", "true", "yes"),
+    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
+    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
+    MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER") or os.getenv("MAIL_USERNAME"),
+)
+mail = Mail(app)
+OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
+
+
+def send_email_otp(email: str, otp: str) -> None:
+    if not app.config["MAIL_USERNAME"] or not app.config["MAIL_PASSWORD"]:
+        raise RuntimeError("Mail credentials are not configured.")
+
+    message = Message(
+        subject="Your Voting System OTP",
+        recipients=[email],
+        body=(
+            f"Your one-time password for the voting system is {otp}. "
+            f"This code expires in {OTP_EXPIRY_MINUTES} minutes."
+        ),
+    )
+    mail.send(message)
+
+
+@app.route("/api/register", methods=["OPTIONS"])
+def register_options():
+    return make_response("", 204)
 
 
 @app.get("/api/health")
 def health():
     return jsonify({"ok": True})
+
+
+@app.post("/api/send-otp")
+def send_otp():
+    body = request.get_json(silent=True) or {}
+    email = str(body.get("email", "")).strip()
+    if not is_valid_email(email):
+        return jsonify({"error": "Enter a valid email address."}), 400
+
+    otp = f"{secrets.randbelow(900000) + 100000:06d}"
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat()
+
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM otps WHERE expires_at < ?", (now_iso(),))
+        conn.execute(
+            "INSERT OR REPLACE INTO otps (email, otp, expires_at, created_at) VALUES (?, ?, ?, ?)",
+            (email, otp, expires_at, now_iso()),
+        )
+        conn.commit()
+        send_email_otp(email, otp)
+        return jsonify({"ok": True, "message": "OTP sent to your email."})
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        return jsonify({"error": "Unable to send OTP email. Please check mail configuration."}), 500
+    finally:
+        conn.close()
+
+
+@app.post("/api/verify-otp")
+def verify_otp():
+    body = request.get_json(silent=True) or {}
+    email = str(body.get("email", "")).strip()
+    otp = str(body.get("otp", "")).strip()
+
+    if not is_valid_email(email):
+        return jsonify({"error": "Enter a valid email address."}), 400
+    if not re.fullmatch(r"\d{6}", otp):
+        return jsonify({"error": "Enter a valid 6-digit OTP."}), 400
+
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT otp, expires_at FROM otps WHERE email = ?", (email,)).fetchone()
+        if not row:
+            return jsonify({"error": "OTP not found. Request a new code."}), 404
+
+        expires_at = datetime.fromisoformat(row["expires_at"])
+        if datetime.now(timezone.utc) > expires_at:
+            conn.execute("DELETE FROM otps WHERE email = ?", (email,))
+            conn.commit()
+            return jsonify({"error": "OTP has expired. Request a new code."}), 400
+
+        if row["otp"] != otp:
+            return jsonify({"error": "Invalid OTP. Please try again."}), 400
+
+        conn.execute("DELETE FROM otps WHERE email = ?", (email,))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
 
 
 @app.post("/api/register")
@@ -391,5 +498,7 @@ def static_files(filename: str):
 
 if __name__ == "__main__":
     init_db()
-    app.run(host="127.0.0.1", port=PORT, debug=True)
+    host = os.getenv("HOST", "127.0.0.1")
+    debug = os.getenv("FLASK_DEBUG", "0").lower() in ("1", "true", "yes")
+    app.run(host=host, port=PORT, debug=debug)
 

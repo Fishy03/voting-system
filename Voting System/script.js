@@ -24,20 +24,27 @@ class AuthService {
 }
 
 class Api {
+  static BASE_URL = window.location.protocol === "file:" ? "http://127.0.0.1:3000" : window.location.origin;
+
   static async request(path, { method = "GET", body } = {}) {
-    const headers = { "Content-Type": "application/json" };
+    const headers = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    };
     const token = AuthService.getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const res = await fetch(path, {
+    const url = new URL(path, Api.BASE_URL).toString();
+    const res = await fetch(url, {
       method,
+      mode: "cors",
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data?.error || "Request failed.");
+      throw new Error(data?.error || `Request failed (${res.status}).`);
     }
     return data;
   }
@@ -73,8 +80,10 @@ class UIController {
   constructor() {
     this.chart = null;
     this.activePollId = this.getPollIdFromUrl();
+    this.storedOtp = null; // For email OTP verification
     this.bindElements();
     this.bindEvents();
+    this.toggleAuth("login"); // Set initial tab to login
     this.render();
   }
 
@@ -86,8 +95,10 @@ class UIController {
 
     this.identityModal = document.getElementById("identityModal");
     this.identityForm = document.getElementById("identityForm");
+    this.sendOtpBtn = document.getElementById("sendOtpBtn");
     this.verifyIdentityBtn = document.getElementById("verifyIdentityBtn");
     this.cancelVerificationBtn = document.getElementById("cancelVerificationBtn");
+    this.captchaQuestion = document.getElementById("captchaQuestion");
 
     this.showLoginBtn = document.getElementById("showLoginBtn");
     this.showRegisterBtn = document.getElementById("showRegisterBtn");
@@ -110,18 +121,12 @@ class UIController {
     this.resultCounts = document.getElementById("resultCounts");
     this.chartCanvas = document.getElementById("resultsChart");
   }
-    this.pollShareLink = document.getElementById("pollShareLink");
-    this.copyPollLinkBtn = document.getElementById("copyPollLinkBtn");
-    this.backDashboardBtn = document.getElementById("backDashboardBtn");
-    this.candidateList = document.getElementById("candidateList");
-    this.resultCounts = document.getElementById("resultCounts");
-    this.chartCanvas = document.getElementById("resultsChart");
-  }
 
   bindEvents() {
     this.showLoginBtn.addEventListener("click", () => this.toggleAuth("login"));
     this.showRegisterBtn.addEventListener("click", () => this.toggleAuth("register"));
 
+    this.sendOtpBtn.addEventListener("click", () => this.sendOtp());
     this.verifyIdentityBtn.addEventListener("click", () => this.handleIdentityVerification());
     this.cancelVerificationBtn.addEventListener("click", () => this.closeIdentityModal());
 
@@ -208,11 +213,11 @@ class UIController {
     const loginActive = type === "login";
     this.loginForm.classList.toggle("hidden", !loginActive);
     this.registerForm.classList.toggle("hidden", loginActive);
-    this.showLoginBtn.classList.toggle("bg-blue-600", loginActive);
+    this.showLoginBtn.classList.toggle("bg-primary-600", loginActive);
     this.showLoginBtn.classList.toggle("text-white", loginActive);
     this.showLoginBtn.classList.toggle("bg-gray-100", !loginActive);
     this.showLoginBtn.classList.toggle("text-gray-700", !loginActive);
-    this.showRegisterBtn.classList.toggle("bg-green-600", !loginActive);
+    this.showRegisterBtn.classList.toggle("bg-secondary-600", !loginActive);
     this.showRegisterBtn.classList.toggle("text-white", !loginActive);
     this.showRegisterBtn.classList.toggle("bg-gray-100", loginActive);
     this.showRegisterBtn.classList.toggle("text-gray-700", loginActive);
@@ -311,44 +316,76 @@ class UIController {
   }
 
   showIdentityModal(onVerified) {
+    this.generateCaptcha();
     this.identityModal.classList.remove("hidden");
     this.onVerifiedCallback = onVerified;
   }
 
   closeIdentityModal() {
     this.identityModal.classList.add("hidden");
-    this.identityForm.reset();
+    this.storedOtp = null; // Reset OTP
   }
 
-  handleIdentityVerification() {
-    const idType = document.getElementById("idType").value;
-    const idNumber = document.getElementById("idNumber").value.trim();
+  generateCaptcha() {
+    const num1 = Math.floor(Math.random() * 10) + 1;
+    const num2 = Math.floor(Math.random() * 10) + 1;
+    this.captchaAnswer = num1 + num2;
+    this.captchaQuestion.textContent = `${num1} + ${num2}`;
+  }
+
+  async sendOtp() {
+    const email = document.getElementById("email").value.trim();
+    if (!email) {
+      this.showMessage("Please enter your email address.", "error");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      this.showMessage("Please enter a valid email address.", "error");
+      return;
+    }
+
+    try {
+      await Api.request("/api/send-otp", { method: "POST", body: { email } });
+      this.showMessage("OTP sent to your email. Check your inbox.", "success");
+    } catch (error) {
+      this.showMessage(error.message, "error");
+    }
+  }
+
+  async handleIdentityVerification() {
+    const email = document.getElementById("email").value.trim();
     const otp = document.getElementById("otp").value.trim();
+    const captcha = document.getElementById("captcha").value.trim();
 
     // Basic client-side validation
-    if (!idNumber) return this.showMessage("Please enter your ID number.", "error");
+    if (!email) return this.showMessage("Please enter your email address.", "error");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return this.showMessage("Please enter a valid email address.", "error");
     if (!otp) return this.showMessage("Please enter the OTP.", "error");
-
-    // Aadhaar validation (12 digits)
-    if (idType === "aadhaar" && !/^\d{12}$/.test(idNumber)) {
-      return this.showMessage("Aadhaar number must be 12 digits.", "error");
-    }
-
-    // PAN validation (format: AAAAA9999A)
-    if (idType === "pan" && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(idNumber.toUpperCase())) {
-      return this.showMessage("Invalid PAN format.", "error");
-    }
+    if (!captcha) return this.showMessage("Please solve the CAPTCHA.", "error");
 
     // OTP validation (6 digits)
     if (!/^\d{6}$/.test(otp)) {
       return this.showMessage("OTP must be 6 digits.", "error");
     }
 
-    // Simulate verification (in real app, this would call backend API)
-    this.showMessage("Identity verified successfully.", "success");
-    this.closeIdentityModal();
-    if (this.onVerifiedCallback) {
-      this.onVerifiedCallback();
+    // CAPTCHA validation
+    if (parseInt(captcha) !== this.captchaAnswer) {
+      this.generateCaptcha();
+      document.getElementById("captcha").value = "";
+      return this.showMessage("Incorrect CAPTCHA answer. Try again.", "error");
+    }
+
+    try {
+      await Api.request("/api/verify-otp", { method: "POST", body: { email, otp } });
+      this.showMessage("Identity verified successfully.", "success");
+      this.closeIdentityModal();
+      if (this.onVerifiedCallback) {
+        this.onVerifiedCallback();
+      }
+    } catch (error) {
+      this.showMessage(error.message, "error");
     }
   }
 
@@ -366,13 +403,13 @@ class UIController {
 
         hosted.forEach((poll) => {
           const div = document.createElement("div");
-          div.className = "bg-gray-50 border border-gray-200 rounded-lg p-4 flex justify-between items-center";
+          div.className = "bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-6 flex justify-between items-center shadow-soft hover:shadow-medium transition-all duration-200 animate-fade-in";
           div.innerHTML = `
-            <div>
-              <strong class="text-gray-800">${poll.title}</strong><br />
+            <div class="flex-1">
+              <strong class="text-gray-800 text-lg block mb-1">${poll.title}</strong>
               <small class="text-gray-600">${poll.totalVotes} vote(s)</small>
             </div>
-            <button class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200 open-poll-btn" data-poll-id="${poll.id}">Open</button>
+            <button class="bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-300 transition-all duration-200 font-medium shadow-soft hover:shadow-medium transform hover:-translate-y-0.5 open-poll-btn" data-poll-id="${poll.id}">Open</button>
           `;
           this.myPolls.appendChild(div);
         });
@@ -406,10 +443,10 @@ class UIController {
         this.candidateList.innerHTML = "";
         poll.candidates.forEach((candidate) => {
           const row = document.createElement("div");
-          row.className = "bg-gray-50 border border-gray-200 rounded-lg p-4 flex justify-between items-center";
+          row.className = "bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-6 flex justify-between items-center shadow-soft hover:shadow-medium transition-all duration-200 animate-fade-in";
           row.innerHTML = `
-            <strong class="text-gray-800">${candidate.name}</strong>
-            <button class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200 vote-btn" data-candidate-id="${candidate.id}" ${
+            <strong class="text-gray-800 text-lg">${candidate.name}</strong>
+            <button class="bg-primary-600 text-white py-3 px-6 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-300 transition-all duration-200 font-semibold shadow-soft hover:shadow-medium transform hover:-translate-y-0.5 vote-btn" data-candidate-id="${candidate.id}" ${
               hasVoted ? "disabled" : ""
             }>
               ${hasVoted ? "Already Voted" : "Vote"}
@@ -428,8 +465,8 @@ class UIController {
         this.resultCounts.innerHTML = "";
         results.forEach((item) => {
           const row = document.createElement("div");
-          row.className = "bg-gray-50 border border-gray-200 rounded-md p-3 flex justify-between";
-          row.innerHTML = `<span class="text-gray-700">${item.name}</span><strong class="text-blue-600">${item.votes} vote(s)</strong>`;
+          row.className = "bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 rounded-lg p-4 flex justify-between items-center shadow-soft animate-fade-in";
+          row.innerHTML = `<span class="text-gray-700 font-medium">${item.name}</span><strong class="text-primary-600 text-lg">${item.votes} vote(s)</strong>`;
           this.resultCounts.appendChild(row);
         });
 
@@ -497,16 +534,16 @@ class UIController {
 
   showMessage(text, type = "success") {
     this.messageBox.textContent = text;
-    this.messageBox.className = `rounded-md p-4 mb-4 text-center font-medium animate-slide-up`;
+    this.messageBox.className = `rounded-xl p-4 mb-6 text-center font-semibold animate-bounce-in shadow-soft`; 
     if (type === "success") {
-      this.messageBox.classList.add("bg-green-100", "border", "border-green-400", "text-green-800");
+      this.messageBox.classList.add("bg-secondary-100", "border-2", "border-secondary-400", "text-secondary-800");
     } else {
-      this.messageBox.classList.add("bg-red-100", "border", "border-red-400", "text-red-800");
+      this.messageBox.classList.add("bg-danger-100", "border-2", "border-danger-400", "text-danger-800");
     }
     setTimeout(() => {
       this.messageBox.className = "message hidden";
       this.messageBox.textContent = "";
-    }, 2500);
+    }, 3000);
   }
 }
 new UIController();
