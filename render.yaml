@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: voting-system
+    runtime: python
+    plan: free
+    rootDir: backend-python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: HOST
+        value: 0.0.0.0
+      - key: FLASK_DEBUG
+        value: "0"
+    disk:
+      name: voting-data
+      mountPath: /opt/render/project/src/backend-python
+      sizeGB: 1
+

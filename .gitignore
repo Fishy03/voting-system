@@ -1,4 +1,9 @@
 node_modules/
 backend/data.sqlite
 backend/.env
+backend-python/data.sqlite
+backend-python/.env
+__pycache__/
+.venv/
+.python-version
 
