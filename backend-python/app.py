@@ -207,8 +207,10 @@ def send_otp():
         send_email_otp(email, otp)
         return jsonify({"ok": True, "message": "OTP sent to your email."})
     except RuntimeError as exc:
+        app.logger.error("OTP send failed: %s", exc)
         return jsonify({"error": str(exc)}), 500
-    except Exception:
+    except Exception as exc:
+        app.logger.exception("Unexpected OTP send error")
         return jsonify({"error": "Unable to send OTP email. Please check mail configuration."}), 500
     finally:
         conn.close()
