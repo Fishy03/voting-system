@@ -146,7 +146,7 @@ def require_user(conn: sqlite3.Connection, payload: dict):
 
 
 app = Flask(__name__, static_folder=None)
-CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app, resources={r"/api/*": {"origins": ["https://voting-system-ftib.onrender.com", "http://127.0.0.1:3000", "http://localhost:3000"]}}, supports_credentials=True)
 
 app.config.update(
     MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
