@@ -158,7 +158,8 @@ MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER") or MAIL_USERNAME
 OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "8"))
-OTP_DISABLED = os.getenv("OTP_DISABLED", "true").lower() in ("1", "true", "yes")
+# Temporary: disable OTP to unblock voting when SMTP/email is failing on the host.
+OTP_DISABLED = True
 
 
 def send_email_otp(email: str, otp: str) -> None:
