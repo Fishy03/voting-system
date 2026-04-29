@@ -24,7 +24,7 @@ class AuthService {
 }
 
 class Api {
-  static BASE_URL = window.location.protocol === "file:" ? "http://127.0.0.1:3000" : window.location.origin;
+  static BASE_URL = window.location.protocol === "file:" ? "http://127.0.0.1:3000" : "https://voting-system-ftib.onrender.com";
 
   static async request(path, { method = "GET", body } = {}) {
     const headers = {
