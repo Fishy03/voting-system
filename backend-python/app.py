@@ -158,6 +158,7 @@ MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER") or MAIL_USERNAME
 OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "8"))
+OTP_DISABLED = os.getenv("OTP_DISABLED", "true").lower() in ("1", "true", "yes")
 
 
 def send_email_otp(email: str, otp: str) -> None:
@@ -207,6 +208,9 @@ def health():
 
 @app.post("/api/send-otp")
 def send_otp():
+    if OTP_DISABLED:
+        return jsonify({"ok": True, "message": "OTP sending is temporarily disabled."})
+
     body = request.get_json(silent=True) or {}
     email = str(body.get("email", "")).strip()
     if not is_valid_email(email):
@@ -237,6 +241,9 @@ def send_otp():
 
 @app.post("/api/verify-otp")
 def verify_otp():
+    if OTP_DISABLED:
+        return jsonify({"ok": True, "message": "OTP verification is temporarily disabled."})
+
     body = request.get_json(silent=True) or {}
     email = str(body.get("email", "")).strip()
     otp = str(body.get("otp", "")).strip()

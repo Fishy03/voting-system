@@ -348,6 +348,9 @@ class UIController {
   }
 
   async sendOtp() {
+    // OTP is temporarily disabled to unblock voting/demo.
+    this.showMessage("OTP sending is temporarily disabled.", "error");
+    return;
     const email = document.getElementById("email").value.trim();
     if (!email) {
       this.showMessage("Please enter your email address.", "error");
@@ -368,21 +371,10 @@ class UIController {
   }
 
   async handleIdentityVerification() {
-    const email = document.getElementById("email").value.trim();
-    const otp = document.getElementById("otp").value.trim();
     const captcha = document.getElementById("captcha").value.trim();
 
-    // Basic client-side validation
-    if (!email) return this.showMessage("Please enter your email address.", "error");
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return this.showMessage("Please enter a valid email address.", "error");
-    if (!otp) return this.showMessage("Please enter the OTP.", "error");
+    // OTP is temporarily disabled: only CAPTCHA is required.
     if (!captcha) return this.showMessage("Please solve the CAPTCHA.", "error");
-
-    // OTP validation (6 digits)
-    if (!/^\d{6}$/.test(otp)) {
-      return this.showMessage("OTP must be 6 digits.", "error");
-    }
 
     // CAPTCHA validation
     if (parseInt(captcha) !== this.captchaAnswer) {
@@ -391,16 +383,9 @@ class UIController {
       return this.showMessage("Incorrect CAPTCHA answer. Try again.", "error");
     }
 
-    try {
-      await Api.request("/api/verify-otp", { method: "POST", body: { email, otp } });
-      this.showMessage("Identity verified successfully.", "success");
-      this.closeIdentityModal();
-      if (this.onVerifiedCallback) {
-        this.onVerifiedCallback();
-      }
-    } catch (error) {
-      this.showMessage(error.message, "error");
-    }
+    this.showMessage("Identity verified (OTP disabled).", "success");
+    this.closeIdentityModal();
+    if (this.onVerifiedCallback) this.onVerifiedCallback();
   }
 
   renderHostedPolls() {
