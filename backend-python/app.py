@@ -7,9 +7,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import jwt
+import smtplib
+from email.message import EmailMessage
 from flask import Flask, jsonify, make_response, request, send_from_directory
 from flask_cors import CORS
-from flask_mail import Mail, Message
 from passlib.hash import pbkdf2_sha256
 
 
@@ -148,32 +149,50 @@ def require_user(conn: sqlite3.Connection, payload: dict):
 app = Flask(__name__, static_folder=None)
 CORS(app, resources={r"/api/*": {"origins": ["https://voting-system-ftib.onrender.com", "http://127.0.0.1:3000", "http://localhost:3000"]}}, supports_credentials=True)
 
-app.config.update(
-    MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
-    MAIL_PORT=int(os.getenv("MAIL_PORT", "587")),
-    MAIL_USE_TLS=os.getenv("MAIL_USE_TLS", "true").lower() in ("1", "true", "yes"),
-    MAIL_USE_SSL=os.getenv("MAIL_USE_SSL", "false").lower() in ("1", "true", "yes"),
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER") or os.getenv("MAIL_USERNAME"),
-)
-mail = Mail(app)
+MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
+MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() in ("1", "true", "yes")
+MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "false").lower() in ("1", "true", "yes")
+MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER") or MAIL_USERNAME
 OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
+SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "8"))
 
 
 def send_email_otp(email: str, otp: str) -> None:
-    if not app.config["MAIL_USERNAME"] or not app.config["MAIL_PASSWORD"]:
+    if not MAIL_USERNAME or not MAIL_PASSWORD or not MAIL_DEFAULT_SENDER:
         raise RuntimeError("Mail credentials are not configured.")
 
-    message = Message(
-        subject="Your Voting System OTP",
-        recipients=[email],
-        body=(
-            f"Your one-time password for the voting system is {otp}. "
-            f"This code expires in {OTP_EXPIRY_MINUTES} minutes."
-        ),
+    message = EmailMessage()
+    message["Subject"] = "Your Voting System OTP"
+    message["From"] = MAIL_DEFAULT_SENDER
+    message["To"] = email
+    message.set_content(
+        f"Your one-time password for the voting system is {otp}. "
+        f"This code expires in {OTP_EXPIRY_MINUTES} minutes."
     )
-    mail.send(message)
+
+    server = None
+    try:
+        if MAIL_USE_SSL:
+            server = smtplib.SMTP_SSL(MAIL_SERVER, MAIL_PORT, timeout=SMTP_TIMEOUT_SECONDS)
+        else:
+            server = smtplib.SMTP(MAIL_SERVER, MAIL_PORT, timeout=SMTP_TIMEOUT_SECONDS)
+            server.ehlo()
+            if MAIL_USE_TLS:
+                server.starttls()
+                server.ehlo()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.send_message(message)
+    except (smtplib.SMTPException, TimeoutError, OSError) as exc:
+        raise RuntimeError("Unable to connect to the mail server. Please try again shortly.") from exc
+    finally:
+        if server is not None:
+            try:
+                server.quit()
+            except Exception:
+                pass
 
 
 @app.route("/api/register", methods=["OPTIONS"])
@@ -198,13 +217,13 @@ def send_otp():
 
     conn = get_db()
     try:
+        send_email_otp(email, otp)
         conn.execute("DELETE FROM otps WHERE expires_at < ?", (now_iso(),))
         conn.execute(
             "INSERT OR REPLACE INTO otps (email, otp, expires_at, created_at) VALUES (?, ?, ?, ?)",
             (email, otp, expires_at, now_iso()),
         )
         conn.commit()
-        send_email_otp(email, otp)
         return jsonify({"ok": True, "message": "OTP sent to your email."})
     except RuntimeError as exc:
         app.logger.error("OTP send failed: %s", exc)
